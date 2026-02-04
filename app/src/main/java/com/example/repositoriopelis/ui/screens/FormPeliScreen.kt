@@ -19,7 +19,23 @@ fun FormPeliScreen(nav: NavController, vm: PeliculaViewModel) {
     var genero by remember { mutableStateOf("") }
 
 
-    val error = titulo.isBlank() || director.isBlank() || anio.isBlank() || genero.isBlank()
+    var anioError by remember { mutableStateOf<String?>(null) }
+    var guardando by remember { mutableStateOf(false) }
+
+
+    fun validarAnio(): Boolean {
+        return try {
+            anio.toInt()
+            anioError = null
+            true
+        } catch (e: NumberFormatException) {
+            anioError = "El año debe ser un número válido"
+            false
+        }
+    }
+
+
+    val camposVacios = titulo.isBlank() || director.isBlank() || anio.isBlank() || genero.isBlank()
 
 
     Column(
@@ -33,17 +49,28 @@ fun FormPeliScreen(nav: NavController, vm: PeliculaViewModel) {
 
         TextField(titulo, { titulo = it }, label = { Text("Título") })
         TextField(director, { director = it }, label = { Text("Director") })
-        TextField(anio, { anio = it }, label = { Text("Año") })
+        TextField(
+            value = anio,
+            onValueChange = { anio = it; anioError = null },
+            label = { Text("Año") },
+            isError = anioError != null,
+            supportingText = { anioError?.let { Text(it) } }
+        )
         TextField(genero, { genero = it }, label = { Text("Género") })
 
 
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = { nav.popBackStack() }) { Text("Volver") }
-            Button(enabled = !error, onClick = {
-                vm.agregar(titulo, director, anio.toInt(), genero)
-                nav.popBackStack()
-            }) { Text("Guardar") }
+            Button(
+                enabled = !camposVacios && !guardando,
+                onClick = {
+                    if (!validarAnio()) return@Button
+                    guardando = true
+                    vm.agregar(titulo, director, anio.toInt(), genero)
+                    nav.popBackStack()
+                }
+            ) { Text("Guardar") }
         }
     }
 }

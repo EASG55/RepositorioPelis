@@ -10,47 +10,118 @@ import androidx.navigation.NavController
 import com.example.repositoriopelis.viewmodel.PeliculaViewModel
 
 @Composable
-fun EditarPeliScreen(id: Int, nav: NavController, vm: PeliculaViewModel) {
+fun EditarPeliScreen(
+    id: Int,
+    nav: NavController,
+    vm: PeliculaViewModel
+) {
 
-    val pelis by vm.peliculas.collectAsState()
-    val peli = pelis.find { it.id == id }
+    val peliculas by vm.peliculas.collectAsState()
+    val pelicula = peliculas.find { it.id == id }
 
-    if (peli == null) {
-        Text("Cargando...")
+    // Seguridad extra: evita crash si aún no está cargada
+    if (pelicula == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
         return
     }
 
-    var titulo by remember { mutableStateOf(peli.titulo) }
-    var director by remember { mutableStateOf(peli.director) }
-    var anio by remember { mutableStateOf(peli.anio.toString()) }
-    var genero by remember { mutableStateOf(peli.genero) }
+    var titulo by remember { mutableStateOf(pelicula.titulo) }
+    var director by remember { mutableStateOf(pelicula.director) }
+    var anio by remember { mutableStateOf(pelicula.anio.toString()) }
+    var genero by remember { mutableStateOf(pelicula.genero) }
 
-    val error = titulo.isBlank() || director.isBlank() || anio.isBlank() || genero.isBlank()
+    var anioError by remember { mutableStateOf<String?>(null) }
+    var guardando by remember { mutableStateOf(false) }
+
+    fun validarAnio(): Boolean {
+        return try {
+            anio.toInt()
+            anioError = null
+            true
+        } catch (e: NumberFormatException) {
+            anioError = "Introduce un año válido"
+            false
+        }
+    }
+
+    val camposInvalidos =
+        titulo.isBlank() || director.isBlank() || anio.isBlank() || genero.isBlank()
 
     Column(
-        Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Editar Película", style = MaterialTheme.typography.headlineSmall)
+
+        Text(
+            text = "Editar película",
+            style = MaterialTheme.typography.headlineSmall
+        )
+
         Spacer(Modifier.height(12.dp))
 
-        TextField(titulo, { titulo = it }, label = { Text("Título") })
-        TextField(director, { director = it }, label = { Text("Director") })
-        TextField(anio, { anio = it }, label = { Text("Año") })
-        TextField(genero, { genero = it }, label = { Text("Género") })
+        TextField(
+            value = titulo,
+            onValueChange = { titulo = it },
+            label = { Text("Título") }
+        )
+
+        TextField(
+            value = director,
+            onValueChange = { director = it },
+            label = { Text("Director") }
+        )
+
+        TextField(
+            value = anio,
+            onValueChange = {
+                anio = it
+                anioError = null
+            },
+            label = { Text("Año") },
+            isError = anioError != null,
+            supportingText = {
+                anioError?.let { Text(it) }
+            }
+        )
+
+        TextField(
+            value = genero,
+            onValueChange = { genero = it },
+            label = { Text("Género") }
+        )
 
         Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
 
-            Button(onClick = { nav.popBackStack() }) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+
+            Button(
+                onClick = { nav.popBackStack() }
+            ) {
                 Text("Cancelar")
             }
 
             Button(
-                enabled = !error,
+                enabled = !camposInvalidos && !guardando,
                 onClick = {
-                    vm.actualizar(id, titulo, director, anio.toInt(), genero)
+                    if (!validarAnio()) return@Button
+                    guardando = true
+                    vm.actualizar(
+                        id = id,
+                        titulo = titulo,
+                        director = director,
+                        anio = anio.toInt(),
+                        genero = genero
+                    )
                     nav.popBackStack()
                 }
             ) {
